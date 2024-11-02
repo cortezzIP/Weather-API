@@ -6,11 +6,12 @@ import (
 
 	"github.com/joho/godotenv"
 
+	_ "github.com/cortezzIP/Weather-API/docs"
 	"github.com/cortezzIP/Weather-API/internal/config"
+	"github.com/cortezzIP/Weather-API/internal/database/redis"
 	"github.com/cortezzIP/Weather-API/internal/handler"
 	"github.com/cortezzIP/Weather-API/internal/router"
 	"github.com/cortezzIP/Weather-API/internal/service"
-	_ "github.com/cortezzIP/Weather-API/docs"
 )
 
 // @title           Weather API
@@ -36,11 +37,16 @@ func init() {
 func main() {
 	cfg := config.MustLoad()
 
-	client := http.Client{
+	redisClient, err := redis.ConnectToRedis(&cfg.RedisConfig)
+	if err != nil {
+		panic(err)
+	}
+
+	httpClient := http.Client{
 		Timeout: time.Second * 30,
 	}
 
-	r := router.SetupRouter(handler.NewWeatherController(service.NewWeatherService(&cfg.WeatherServiceConfig, &client)))
+	r := router.SetupRouter(handler.NewWeatherController(service.NewWeatherService(&cfg.WeatherServiceConfig, &httpClient, redisClient)))
 
 	r.Run(cfg.ListenAddress)
 }
